@@ -66,7 +66,7 @@ namespace DynamoJson
             var datatype = data.GetType();
 
             // If a primitive, return the value
-            if (datatype.IsPrimitive) return data;
+            if (datatype.IsPrimitive || datatype.ToString().Equals("System.String")) return data;
 
             // If an object, reflect all properties
             var properties = datatype.GetProperties();
@@ -143,7 +143,16 @@ namespace DynamoJson
                 return list;
             }
 
-            // For all other types
+            // For primitive-like types
+            if (jtoken.Type == JTokenType.Boolean)
+                return jtoken.ToString().Equals("True");
+
+            if (jtoken.Type == JTokenType.Integer)
+                return int.Parse(jtoken.ToString());
+
+            if (jtoken.Type == JTokenType.Float)
+                return double.Parse(jtoken.ToString());
+
             return jtoken.ToString();
         }
     }
