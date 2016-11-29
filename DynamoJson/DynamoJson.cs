@@ -6,16 +6,46 @@ using Autodesk.DesignScript.Runtime;
 
 namespace DynamoJson
 {
+    public class FileHelper
+    {
+        private FileHelper() { }
+
+        /// <summary>
+        /// Writes a string into a file.
+        /// </summary>
+        /// <param name="str">The string to be written into a file</param>
+        /// <param name="filePath">The file path</param>
+        /// <returns>The full path of the written file</returns>
+        public static string WriteToFile(string str, string filePath)
+        {
+            System.IO.File.WriteAllText(filePath, str);
+            return new System.IO.FileInfo(filePath).FullName;
+        }
+
+        /// <summary>
+        /// Reads the contents of a file into a string.
+        /// </summary>
+        /// <param name="filePath">The file path</param>
+        /// <returns>File contents</returns>
+        public static string ReadFromFile(string filePath)
+        {
+            return System.IO.File.ReadAllText(filePath);
+        }
+    }
+
     public class JsonBuilder
     {
         private JsonBuilder() { }
 
-        public static void StringToFile(string str, string filePath)
-        {
-            System.IO.File.WriteAllText(filePath, str);
-        }
-
-        public static string ToJsonString([ArbitraryDimensionArrayImport]object data, bool formatted = false)
+        /// <summary>
+        /// Serializes Dynamo data into a JSON string. Set the "formatted" boolean to true for
+        /// multi-line JSON string, or to false for one-line JSON. To write the result into a file,
+        /// connect this node to a "FileHelper.WriteToFile" node.
+        /// </summary>
+        /// <param name="data">Dynamo object(s) of any dimension</param>
+        /// <param name="formatted">True for multi-line JSON string, false for one-line JSON string</param>
+        /// <returns>Serialized JSON string</returns>
+        public static string CreateJsonString([ArbitraryDimensionArrayImport]object data, bool formatted = false)
         {
             return JsonConvert.SerializeObject(
                 RemoveReferences(data),
@@ -52,17 +82,24 @@ namespace DynamoJson
     {
         private JsonParser() { }
 
-        public static string StringFromFile(string filePath)
-        {
-            return System.IO.File.ReadAllText(filePath);
-        }
-
+        /// <summary>
+        /// Deserializes a JSON string. This node will convert JSON objects, if any, into Dynamo
+        /// dictionaries. Connect this node to a "GetKeys" node to get the keys of the dictionary.
+        /// </summary>
+        /// <param name="json">JSON string to be deserialized</param>
+        /// <returns>Deserialized JSON data</returns>
         public static object ToDictionary(string json)
         {
             var jdata = JToken.Parse(json);
             return ParseToken(jdata, true);
         }
 
+        /// <summary>
+        /// Deserializes a JSON string. This node will convert JSON objects, if any, into Dynamo
+        /// sublists in terms of {key,value} pairs.
+        /// </summary>
+        /// <param name="json">JSON string to be deserialized</param>
+        /// <returns>Deserialized JSON data</returns>
         public static object ToSublists(string json)
         {
             var jdata = JToken.Parse(json);

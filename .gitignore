@@ -1,3 +1,6 @@
 DynamoJson/bin/
 DynamoJson/obj/
 packages/
+*.opendb
+*.sdf
+*.suo
