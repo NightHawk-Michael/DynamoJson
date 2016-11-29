@@ -6,13 +6,20 @@ using Autodesk.DesignScript.Runtime;
 
 namespace DynamoJson
 {
-    public class DynamoJson
+    public class JsonBuilder
     {
-        public static string ToJsonString([ArbitraryDimensionArrayImport]object data, bool indented = false)
+        private JsonBuilder() { }
+
+        public static void StringToFile(string str, string filePath)
+        {
+            System.IO.File.WriteAllText(filePath, str);
+        }
+
+        public static string ToJsonString([ArbitraryDimensionArrayImport]object data, bool formatted = false)
         {
             return JsonConvert.SerializeObject(
                 RemoveReferences(data),
-                indented ? Formatting.Indented : Formatting.None);
+                formatted ? Formatting.Indented : Formatting.None);
         }
 
         private static object RemoveReferences(object data)
@@ -39,40 +46,64 @@ namespace DynamoJson
                 dict[prop.Name] = prop.GetValue(data, null).ToString();
             return dict;
         }
+    }
 
-        public static void ToJsonFile([ArbitraryDimensionArrayImport]object data, string filePath, bool formatting = false)
+    public class JsonParser
+    {
+        private JsonParser() { }
+
+        public static string StringFromFile(string filePath)
         {
-            System.IO.File.WriteAllText(filePath, ToJsonString(data, formatting));
+            return System.IO.File.ReadAllText(filePath);
         }
 
-        public static object FromJsonString(string json)
+        public static object ToDictionary(string json)
         {
             var jdata = JToken.Parse(json);
-            return ParseJToken(jdata);
+            return ParseToken(jdata, true);
         }
 
-        private static object ParseJToken(JToken jtoken)
+        public static object ToSublists(string json)
+        {
+            var jdata = JToken.Parse(json);
+            return ParseToken(jdata, false);
+        }
+
+        private static object ParseToken(JToken jtoken, bool dictOrList)
         {
             // Convert Array to Dynamo list
             if (jtoken.Type == JTokenType.Array)
             {
                 var list = new List<object>();
                 foreach (var child in jtoken.Children())
-                    list.Add(ParseJToken(child));
+                    list.Add(ParseToken(child, dictOrList));
                 return list;
             }
 
             // Convert Object to Dynamo dictionary
-            if (jtoken.Type == JTokenType.Object)
+            if (jtoken.Type == JTokenType.Object && dictOrList)
             {
                 var dict = new Dictionary<string, object>();
                 foreach (var property in (jtoken as JObject).Properties())
                 {
                     var key = property.Name;
                     var value = property.Value;
-                    dict[key] = ParseJToken(value);
+                    dict[key] = ParseToken(value, dictOrList);
                 }
                 return dict;
+            }
+
+            // Convert Object to Dynamo sublist
+            if (jtoken.Type == JTokenType.Object && !dictOrList)
+            {
+                var list = new List<object>();
+                foreach (var property in (jtoken as JObject).Properties())
+                {
+                    var key = property.Name;
+                    var value = property.Value;
+                    list.Add(new List<object>() { key, ParseToken(value, dictOrList) });
+                }
+                return list;
             }
 
             // For all other types
